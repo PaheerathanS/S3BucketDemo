@@ -1,6 +1,7 @@
 package com.s3.demo.controller;
 
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -39,5 +40,10 @@ public class DownloadFileController {
 		default:
 			return MediaType.APPLICATION_OCTET_STREAM;
 		}
+	}
+
+	@GetMapping("/api/files")
+	public List<String> listAllFiles() {
+		return s3Services.listFiles();
 	}
 }

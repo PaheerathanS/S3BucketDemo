@@ -3,6 +3,8 @@ package com.s3.demo.services.impl;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,10 +15,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.ListObjectsRequest;
+import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.s3.demo.services.S3Services;
 
 @Service
@@ -82,6 +89,48 @@ public class S3ServicesImpl implements S3Services {
 			logger.info("Caught an AmazonClientException: ");
 			logger.info("Error Message: " + ace.getMessage());
 			throw ace;
+		}
+	}
+
+	@Override
+	public List<String> listFiles() {
+		ListObjectsRequest listObjectsRequest = new ListObjectsRequest().withBucketName(bucketName)
+				.withPrefix("test" + "/");
+
+		List<String> keys = new ArrayList<>();
+
+		ObjectListing objects = s3client.listObjects(listObjectsRequest);
+
+		while (true) {
+			List<S3ObjectSummary> summaries = objects.getObjectSummaries();
+			if (summaries.size() < 1) {
+				break;
+			}
+			for (S3ObjectSummary item : summaries) {
+				if (!item.getKey().endsWith("/"))
+					keys.add(item.getKey());
+			}
+			objects = s3client.listNextBatchOfObjects(objects);
+		}
+		return keys;
+	}
+
+	@Override
+	public void deleteFile(String keyName) {
+		try {
+			s3client.deleteObject(new DeleteObjectRequest(bucketName, keyName));
+		} catch (AmazonServiceException ase) {
+			logger.info("Caught an AmazonServiceException from PUT requests, rejected reasons:");
+			logger.info("Error Message:    " + ase.getMessage());
+			logger.info("HTTP Status Code: " + ase.getStatusCode());
+			logger.info("AWS Error Code:   " + ase.getErrorCode());
+			logger.info("Error Type:       " + ase.getErrorType());
+			logger.info("Request ID:       " + ase.getRequestId());
+			throw ase;
+		} catch (SdkClientException sce) {
+			logger.info("Caught an SdkClientException: ");
+			logger.info("Error Message: " + sce.getMessage());
+			throw sce;
 		}
 	}
 }
